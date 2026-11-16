@@ -1,47 +1,36 @@
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <title>CheckStock — перемещение</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; }
-    label { display: block; margin: 12px 0 4px; }
-    select, input { padding: 4px 8px; width: 260px; }
-    button { margin-top: 16px; padding: 6px 14px; }
-  </style>
-</head>
-<body>
-  <h1>Перемещение между складами</h1>
-  {% if error %}
-    <p style="color:#b00020;">{{ error }}</p>
-  {% endif %}
-  <form method="post" action="/transfers/send">
-    <label for="product_id">Товар</label>
+{% extends "base.html" %}
+
+{% block title %}CheckStock — перемещение{% endblock %}
+
+{% block content %}
+<h1>Перемещение между складами</h1>
+<p><a href="/">← Назад к остаткам</a></p>
+
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<form method="post" action="/transfers/send">
+  <div style="margin-bottom: 12px;">
+    <label for="product_id" style="display:block; margin-bottom:4px;">Товар</label>
     <select name="product_id" id="product_id" required>
-      {% for p in products %}
-        <option value="{{ p.id }}">{{ p.sku }} — {{ p.name }}</option>
-      {% endfor %}
+      {% for p in products %}<option value="{{ p.id }}">{{ p.sku }} — {{ p.name }}</option>{% endfor %}
     </select>
-
-    <label for="from_warehouse_id">Откуда</label>
+  </div>
+  <div style="margin-bottom: 12px;">
+    <label for="from_warehouse_id" style="display:block; margin-bottom:4px;">Откуда</label>
     <select name="from_warehouse_id" id="from_warehouse_id" required>
-      {% for wh in warehouses %}
-        <option value="{{ wh.id }}">{{ wh.name }}</option>
-      {% endfor %}
+      {% for wh in warehouses %}<option value="{{ wh.id }}">{{ wh.name }}</option>{% endfor %}
     </select>
-
-    <label for="to_warehouse_id">Куда</label>
+  </div>
+  <div style="margin-bottom: 12px;">
+    <label for="to_warehouse_id" style="display:block; margin-bottom:4px;">Куда</label>
     <select name="to_warehouse_id" id="to_warehouse_id" required>
-      {% for wh in warehouses %}
-        <option value="{{ wh.id }}">{{ wh.name }}</option>
-      {% endfor %}
+      {% for wh in warehouses %}<option value="{{ wh.id }}">{{ wh.name }}</option>{% endfor %}
     </select>
-
-    <label for="qty">Количество</label>
+  </div>
+  <div style="margin-bottom: 12px;">
+    <label for="qty" style="display:block; margin-bottom:4px;">Количество</label>
     <input type="number" name="qty" id="qty" min="1" value="1" required>
-
-    <button type="submit">Отправить</button>
-  </form>
-  <p><a href="/">← Назад к остаткам</a></p>
-</body>
-</html>
+  </div>
+  <button type="submit">Отправить</button>
+</form>
+{% endblock %}

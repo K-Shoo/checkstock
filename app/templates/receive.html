@@ -1,45 +1,32 @@
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <title>CheckStock — приёмка перемещения</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; }
-    label { display: block; margin: 12px 0 4px; }
-    input { padding: 4px 8px; width: 260px; }
-    button { margin-top: 16px; padding: 6px 14px; }
-    .error { color: #b00020; }
-    .hint { color: #666; font-size: 0.9em; }
-  </style>
-</head>
-<body>
-  <h1>Приёмка перемещения</h1>
-  <p><a href="/">← Назад к остаткам</a></p>
+{% extends "base.html" %}
 
-  {% if error %}
-    <p class="error">{{ error }}</p>
-  {% endif %}
+{% block title %}CheckStock — приёмка перемещения{% endblock %}
 
-  <p>
-    Товар: <b>{{ operation.product.sku }} — {{ operation.product.name }}</b><br>
-    Отправлено: <b>{{ operation.qty }}</b> шт.<br>
-    Откуда: <b>{{ operation.from_warehouse.name }}</b><br>
-    Куда: <b>{{ operation.to_warehouse.name }}</b>
-  </p>
+{% block content %}
+<h1>Приёмка перемещения</h1>
+<p><a href="/">← Назад к остаткам</a></p>
 
-  <form method="post" action="/transfers/{{ operation.id }}/receive">
-    <label for="fact_qty">Фактически принято, шт.</label>
-    <input type="number" name="fact_qty" id="fact_qty"
-           value="{{ operation.qty }}" min="0" required>
-    <p class="hint">
-      Если фактическое количество отличается от отправленного,
-      будет создан акт расхождения.
-    </p>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
 
-    <label for="comment">Комментарий (необязательно)</label>
+<table style="max-width: 600px;">
+  <tbody>
+    <tr><td>Товар</td><td><b>{{ operation.product.sku }} — {{ operation.product.name }}</b></td></tr>
+    <tr><td>Отправлено</td><td><b>{{ operation.qty }}</b> шт.</td></tr>
+    <tr><td>Откуда</td><td><b>{{ operation.from_warehouse.name }}</b></td></tr>
+    <tr><td>Куда</td><td><b>{{ operation.to_warehouse.name }}</b></td></tr>
+  </tbody>
+</table>
+
+<form method="post" action="/transfers/{{ operation.id }}/receive" style="margin-top: 16px;">
+  <div style="margin-bottom: 12px;">
+    <label for="fact_qty" style="display:block; margin-bottom:4px;">Фактически принято, шт.</label>
+    <input type="number" name="fact_qty" id="fact_qty" value="{{ operation.qty }}" min="0" required>
+    <p class="hint">Если фактическое количество отличается от отправленного, будет создан акт расхождения.</p>
+  </div>
+  <div style="margin-bottom: 12px;">
+    <label for="comment" style="display:block; margin-bottom:4px;">Комментарий (необязательно)</label>
     <input type="text" name="comment" id="comment" maxlength="500">
-
-    <button type="submit">Подтвердить приёмку</button>
-  </form>
-</body>
-</html>
+  </div>
+  <button type="submit">Подтвердить приёмку</button>
+</form>
+{% endblock %}

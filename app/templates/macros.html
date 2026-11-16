@@ -1,0 +1,29 @@
+{% macro status_badge(status) -%}
+  {%- set labels = {
+    "PENDING": "В ожидании",
+    "CONFIRMED": "Подтверждено",
+    "CANCELLED": "Отменено",
+    "IN_TRANSIT": "В пути",
+    "RECEIVED": "Принято"
+  } -%}
+  {%- set classes = {
+    "PENDING": "badge-pending",
+    "CONFIRMED": "badge-confirmed",
+    "CANCELLED": "badge-cancelled",
+    "IN_TRANSIT": "badge-transit",
+    "RECEIVED": "badge-received"
+  } -%}
+  <span class="badge {{ classes.get(status, '') }}">{{ labels.get(status, status) }}</span>
+{%- endmacro %}
+
+{% macro qty_cell(qty) -%}
+  {%- if qty and qty > 0 -%}{{ qty }}{%- else -%}<span class="zero">0</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro actions_bar(items) -%}
+  <div class="actions">
+    {%- for item in items -%}
+      <a class="{{ item.cls }}" href="{{ item.href }}">{{ item.label }}</a>
+    {%- endfor -%}
+  </div>
+{%- endmacro %}
