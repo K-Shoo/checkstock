@@ -26,6 +26,10 @@
     .btn-warehouses { background: #444; }
     form.inline { display: inline; }
     .archived { color: #999; }
+    table.where td:nth-child(2),
+    table.where th:nth-child(2) {
+      text-align: left;
+    }
     .btn-action {
       display: inline-block;
       box-sizing: border-box;
@@ -56,6 +60,7 @@
     <a class="btn-transfer" href="/transfers">Перемещение</a>
     <a class="btn-fbo" href="/fbo">Отправка FBO</a>
     <a class="btn-warehouses" href="/warehouses">Склады</a>
+    <a class="btn-warehouses" href="/products">Товары</a>
   </div>
 
   <table>
@@ -160,8 +165,30 @@
     <p>Товаров в пути на маркетплейс нет.</p>
   {% endif %}
 
+  <h2>Остатки на складе маркетплейса (FBO)</h2>
+  {% if marketplace_stock %}
+    <table>
+      <thead>
+        <tr>
+          <th>Товар</th>
+          <th>На маркетплейсе, шт.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in marketplace_stock %}
+          <tr>
+            <td>{{ m.product.sku }} — {{ m.product.name }}</td>
+            <td>{{ m.qty }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>На складе маркетплейса товаров нет.</p>
+  {% endif %}
+
   <h2>Где числится товар (включая архивные склады)</h2>
-  <table>
+  <table class="where">
     <thead>
       <tr>
         <th>Склад</th>

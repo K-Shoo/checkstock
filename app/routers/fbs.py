@@ -10,6 +10,7 @@ from app.db import get_db
 from app.models import Product, Warehouse
 from app.schemas import FbsReserveForm
 from app.services import cancel_fbs, reserve_fbs, ship_fbs
+from app.logger import logger
 
 router = APIRouter(prefix="/fbs", tags=["FBS"])
 templates = Jinja2Templates(directory="app/templates")
@@ -65,6 +66,7 @@ async def fbs_reserve(
             db, form.product_id, form.warehouse_id, form.qty
         )
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/fbs?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)
 
@@ -85,6 +87,7 @@ async def fbs_ship(
     try:
         await ship_fbs(db, operation_id)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)
 
@@ -102,5 +105,6 @@ async def fbs_cancel(
     try:
         await cancel_fbs(db, operation_id)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)

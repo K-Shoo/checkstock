@@ -1,6 +1,6 @@
 """Управление складами ФФ."""
 
-from fastapi import APIRouter, Depends, Form, Form, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
@@ -15,6 +15,7 @@ from app.services import (
     rename_warehouse,
     restore_warehouse,
 )
+from app.logger import logger
 
 router = APIRouter(prefix="/warehouses", tags=["Склады"])
 templates = Jinja2Templates(directory="app/templates")
@@ -53,6 +54,7 @@ async def warehouses_create(
     try:
         await create_warehouse(db, form.name)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/warehouses?error={exc}", status_code=303)
     return RedirectResponse(url="/warehouses", status_code=303)
 
@@ -71,6 +73,7 @@ async def warehouses_rename(
     try:
         await rename_warehouse(db, warehouse_id, form.name)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/warehouses?error={exc}", status_code=303)
     return RedirectResponse(url="/warehouses", status_code=303)
 
@@ -92,6 +95,7 @@ async def warehouses_delete(
     try:
         await deactivate_warehouse(db, warehouse_id)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/warehouses?error={exc}", status_code=303)
     return RedirectResponse(url="/warehouses", status_code=303)
 
@@ -109,5 +113,6 @@ async def warehouses_restore(
     try:
         await restore_warehouse(db, warehouse_id)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/warehouses?error={exc}", status_code=303)
     return RedirectResponse(url="/warehouses", status_code=303)

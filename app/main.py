@@ -1,8 +1,16 @@
 """Точка входа FastAPI-приложения CheckStock."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
-from app.routers import fbo, fbs, inbound, stock, transfers, warehouses
+from app.routers import (
+    fbo,
+    fbs,
+    inbound,
+    products,
+    stock,
+    transfers,
+    warehouses,
+)
 
 app = FastAPI(
     title="CheckStock",
@@ -25,3 +33,10 @@ app.include_router(fbs.router)
 app.include_router(transfers.router)
 app.include_router(fbo.router)
 app.include_router(warehouses.router)
+app.include_router(products.router)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> Response:
+    """Заглушка для favicon, чтобы браузер не получал 404."""
+    return Response(status_code=204)

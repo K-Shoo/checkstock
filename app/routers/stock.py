@@ -7,9 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants import (
+    DISCREPANCIES_LIMIT,
+    OPERATIONS_HISTORY_LIMIT,
+)
 from app.db import get_db
 from app.models import (
     Discrepancy,
+    MarketplaceStock,
     InTransit,
     Operation,
     Product,
@@ -40,7 +45,11 @@ async def index(
 ) -> HTMLResponse:
     """Показать остатки, товар в пути и последние операции."""
     products = (
-        await db.execute(select(Product).order_by(Product.sku))
+        await db.execute(
+            select(Product)
+            .where(Product.is_active.is_(True))
+            .order_by(Product.sku)
+        )
     ).scalars().all()
     warehouses = (
         await db.execute(
@@ -55,12 +64,20 @@ async def index(
     stock_items = (await db.execute(select(StockItem))).scalars().all()
     operations = (
         await db.execute(
-            select(Operation).order_by(Operation.created_at.desc()).limit(20)
+            select(Operation).order_by(Operation.created_at.desc()).limit(OPERATIONS_HISTORY_LIMIT)
         )
     ).scalars().all()
     in_transit = (
         await db.execute(
             select(InTransit).where(InTransit.status == "IN_TRANSIT")
+        )
+    ).scalars().all()
+    marketplace_stock = (
+        await db.execute(
+            select(MarketplaceStock)
+            .options(selectinload(MarketplaceStock.product))
+            .where(MarketplaceStock.qty > 0)
+            .order_by(MarketplaceStock.product_id)
         )
     ).scalars().all()
     discrepancies = (
@@ -78,7 +95,7 @@ async def index(
                 ),
             )
             .order_by(Discrepancy.created_at.desc())
-            .limit(20)
+            .limit(OPERATIONS_HISTORY_LIMIT)
         )
     ).scalars().all()
 
@@ -96,6 +113,7 @@ async def index(
             "stock_map": stock_map,
             "operations": operations,
             "in_transit": in_transit,
+            "marketplace_stock": marketplace_stock,
             "discrepancies": discrepancies,
             "error": error,
         },

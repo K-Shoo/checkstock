@@ -10,6 +10,7 @@ from app.db import get_db
 from app.models import Product, Warehouse
 from app.schemas import InboundForm
 from app.services import create_inbound
+from app.logger import logger
 
 router = APIRouter(prefix="/inbound", tags=["Приход"])
 templates = Jinja2Templates(directory="app/templates")
@@ -65,5 +66,6 @@ async def inbound_submit(
             db, form.product_id, form.warehouse_id, form.qty
         )
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/inbound?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)

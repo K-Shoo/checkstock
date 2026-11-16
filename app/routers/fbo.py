@@ -10,6 +10,7 @@ from app.db import get_db
 from app.models import Product, Warehouse
 from app.schemas import FboSendForm
 from app.services import create_fbo_ship, receive_fbo
+from app.logger import logger
 
 router = APIRouter(prefix="/fbo", tags=["FBO"])
 templates = Jinja2Templates(directory="app/templates")
@@ -65,6 +66,7 @@ async def fbo_send(
             db, form.product_id, form.warehouse_id, form.qty
         )
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/fbo?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)
 
@@ -85,5 +87,6 @@ async def fbo_receive(
     try:
         await receive_fbo(db, operation_id)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)

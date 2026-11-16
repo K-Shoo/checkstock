@@ -3,16 +3,24 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.constants import InTransitKind, OperationType
-from app.validators import ensure_active_warehouse, ensure_enough_stock
+from app.constants import (
+    InTransitKind,
+    OperationType,
+    SKU_PREFIX,
+    SKU_START_NUMBER,
+)
+from app.logger import logger
 from app.models import (
     Discrepancy,
+    MarketplaceStock,
     InTransit,
     Operation,
+    Product,
     StockItem,
     StockLedger,
     Warehouse,
 )
+from app.validators import ensure_active_warehouse, ensure_enough_stock
 
 
 async def create_inbound(
@@ -48,6 +56,7 @@ async def create_inbound(
 
     operation = Operation(
         type=OperationType.INBOUND.value,
+        status="CONFIRMED",
         product_id=product_id,
         warehouse_id=warehouse_id,
         qty=qty,
@@ -65,6 +74,10 @@ async def create_inbound(
     )
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Приход: SKU id=%s, склад id=%s, +%s",
+        product_id, warehouse_id, qty,
+    )
     return operation
 
 
@@ -113,6 +126,10 @@ async def reserve_fbs(
     )
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Резерв FBS: SKU id=%s, склад id=%s, %s шт.",
+        product_id, warehouse_id, qty,
+    )
     return operation
 
 
@@ -152,6 +169,9 @@ async def cancel_fbs(
     )
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Отмена резерва FBS: операция id=%s", operation_id,
+    )
     return operation
 
 
@@ -195,8 +215,10 @@ async def ship_fbs(
     )
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Отправка FBS: операция id=%s", operation_id,
+    )
     return operation
-
 
 
 async def create_transfer(
@@ -260,6 +282,10 @@ async def create_transfer(
     )
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Перемещение: SKU id=%s, склад %s → %s, %s шт.",
+        product_id, from_warehouse_id, to_warehouse_id, qty,
+    )
     return operation
 
 
@@ -336,6 +362,10 @@ async def receive_transfer(
 
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Приёмка перемещения: операция id=%s, факт %s",
+        operation_id, fact_qty,
+    )
     return operation
 
 
@@ -396,6 +426,10 @@ async def create_fbo_ship(
     )
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Отправка FBO: SKU id=%s, склад id=%s, %s шт.",
+        product_id, warehouse_id, qty,
+    )
     return operation
 
 
@@ -424,8 +458,32 @@ async def receive_fbo(
     in_transit.status = "RECEIVED"
     operation.status = "RECEIVED"
 
+    # TODO: в будущем остатки на маркетплейсе синхронизировать через API
+    # (Ozon, WB, ЯМ) и валидировать расхождения между учётным и фактическим
+    # остатком. Сейчас ведём вручную: +qty при приёмке FBO.
+    mp_stock = (
+        await db.execute(
+            select(MarketplaceStock).where(
+                MarketplaceStock.product_id == operation.product_id
+            )
+        )
+    ).scalar_one_or_none()
+
+    if mp_stock is None:
+        mp_stock = MarketplaceStock(
+            product_id=operation.product_id,
+            qty=0,
+        )
+        db.add(mp_stock)
+
+    mp_stock.qty += operation.qty
+
     await db.commit()
     await db.refresh(operation)
+    logger.info(
+        "Приёмка FBO: операция id=%s, +%s на маркетплейс",
+        operation_id, operation.qty,
+    )
     return operation
 
 
@@ -537,9 +595,8 @@ async def deactivate_warehouse(
     warehouse.is_active = False
     await db.commit()
     await db.refresh(warehouse)
+    logger.info("Склад удалён (soft-delete): %s", warehouse.name)
     return warehouse
-
-
 
 
 async def restore_warehouse(
@@ -627,4 +684,119 @@ async def cancel_transfer(
     )
     await db.commit()
     await db.refresh(operation)
+    logger.info("Отмена перемещения: операция id=%s", operation_id)
     return operation
+
+
+async def next_sku(db: AsyncSession) -> str:
+    """Следующий артикул вида SKU-NNN (по порядку)."""
+    result = await db.execute(
+        select(Product.sku).where(Product.sku.like("SKU-%"))
+    )
+    max_num = SKU_START_NUMBER - 1
+    for (sku,) in result.all():
+        try:
+            num = int(sku.split("-", 1)[1])
+        except (ValueError, IndexError):
+            continue
+        if num > max_num:
+            max_num = num
+    return f"{SKU_PREFIX}{max_num + 1}"
+
+
+async def create_product(
+    db: AsyncSession,
+    name: str,
+) -> Product:
+    """Создать новый товар. Артикул генерируется автоматически."""
+    if not name.strip():
+        raise ValueError("Название не может быть пустым")
+
+    sku_value = await next_sku(db)
+
+    product = Product(sku=sku_value, name=name.strip())
+    db.add(product)
+    await db.commit()
+    await db.refresh(product)
+    logger.info("Товар создан: %s — %s", product.sku, product.name)
+    return product
+
+
+async def rename_product(
+    db: AsyncSession,
+    product_id: int,
+    new_name: str,
+) -> Product:
+    """Переименовать товар."""
+    if not new_name.strip():
+        raise ValueError("Название не может быть пустым")
+
+    product = await db.get(Product, product_id)
+    if product is None or not product.is_active:
+        raise ValueError("Товар не найден")
+
+    product.name = new_name.strip()
+    await db.commit()
+    await db.refresh(product)
+    return product
+
+
+async def deactivate_product(
+    db: AsyncSession,
+    product_id: int,
+) -> Product:
+    """Мягко удалить товар, если на складах нет остатков."""
+    product = await db.get(Product, product_id)
+    if product is None or not product.is_active:
+        raise ValueError("Товар не найден")
+
+    stock = (
+        await db.execute(
+            select(StockItem).where(
+                StockItem.product_id == product_id,
+                StockItem.qty_physical > 0,
+            )
+        )
+    ).scalars().all()
+    if stock:
+        total = sum(item.qty_physical for item in stock)
+        raise ValueError(
+            f"На складах осталось {total} ед. товара. "
+            "Удаление невозможно, пока остаток не обнулён."
+        )
+
+    in_transit = (
+        await db.execute(
+            select(InTransit).where(
+                InTransit.product_id == product_id,
+                InTransit.status == "IN_TRANSIT",
+            )
+        )
+    ).scalars().all()
+    if in_transit:
+        raise ValueError(
+            "Товар в пути. Удаление невозможно, пока не принят."
+        )
+
+    product.is_active = False
+    await db.commit()
+    await db.refresh(product)
+    logger.info("Товар удалён (soft-delete): %s", product.sku)
+    return product
+
+
+async def restore_product(
+    db: AsyncSession,
+    product_id: int,
+) -> Product:
+    """Восстановить удалённый товар."""
+    product = await db.get(Product, product_id)
+    if product is None:
+        raise ValueError("Товар не найден")
+    if product.is_active:
+        raise ValueError("Товар уже активен")
+
+    product.is_active = True
+    await db.commit()
+    await db.refresh(product)
+    return product

@@ -11,6 +11,7 @@ from app.db import get_db
 from app.models import Operation, Product, Warehouse
 from app.schemas import TransferForm
 from app.services import cancel_transfer, create_transfer, receive_transfer
+from app.logger import logger
 
 router = APIRouter(prefix="/transfers", tags=["Перемещения"])
 templates = Jinja2Templates(directory="app/templates")
@@ -70,6 +71,7 @@ async def transfer_send(
             form.qty,
         )
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/transfers?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)
 
@@ -123,6 +125,7 @@ async def transfer_receive(
     try:
         await receive_transfer(db, operation_id, fact_qty, comment)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(
             url=f"/transfers/{operation_id}/receive?error={exc}",
             status_code=303,
@@ -146,5 +149,6 @@ async def transfer_cancel(
     try:
         await cancel_transfer(db, operation_id)
     except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/?error={exc}", status_code=303)
     return RedirectResponse(url="/", status_code=303)

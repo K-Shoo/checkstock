@@ -29,6 +29,11 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     sku: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        server_default="1",
+    )
 
     stock_items: Mapped[list["StockItem"]] = relationship(
         back_populates="product",
@@ -39,14 +44,14 @@ class Warehouse(Base):
     """Склад фулфилмента (ФФ)."""
 
     __tablename__ = "warehouses"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
         server_default="1",
     )
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(120), unique=True)
 
     stock_items: Mapped[list["StockItem"]] = relationship(
         back_populates="warehouse",
@@ -210,3 +215,28 @@ class Discrepancy(Base):
     )
 
     operation: Mapped["Operation"] = relationship()
+
+
+class MarketplaceStock(Base):
+    """Остаток товара на складе маркетплейса (FBO).
+
+    Ведётся вручную: увеличивается при приёмке FBO.
+    TODO: в будущем — синхронизация через API маркетплейса (Ozon, WB, ЯМ)
+    и валидация расхождений между учётным и фактическим остатком.
+    """
+
+    __tablename__ = "marketplace_stock"
+    __table_args__ = (
+        UniqueConstraint("product_id", name="uq_marketplace_product"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    qty: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+    product: Mapped[Product] = relationship()

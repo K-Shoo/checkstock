@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Operation, StockItem, Warehouse
+from app.models import StockItem, Warehouse
 
 
 async def ensure_active_warehouse(
@@ -56,16 +56,3 @@ async def ensure_enough_stock(
     if hints:
         msg += " Есть на: " + "; ".join(hints) + "."
     raise ValueError(msg)
-
-
-def ensure_operation_status(
-    operation: Operation | None,
-    expected_type: str,
-    expected_status: str,
-    error: str,
-) -> None:
-    """Проверить тип и статус операции."""
-    if operation is None or operation.type != expected_type:
-        raise ValueError("Операция не найдена или имеет неверный тип")
-    if operation.status != expected_status:
-        raise ValueError(error)
