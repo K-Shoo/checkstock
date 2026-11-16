@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.models import Product, Warehouse
 from app.schemas import FbsReserveForm
-from app.services import cancel_fbs, reserve_fbs, ship_fbs
+from app.services import (
+    cancel_fbs,
+    deliver_fbs,
+    reserve_fbs,
+    ship_fbs,
+)
 from app.logger import logger
 
 router = APIRouter(prefix="/fbs", tags=["FBS"])
@@ -104,6 +109,24 @@ async def fbs_cancel(
 ) -> RedirectResponse:
     try:
         await cancel_fbs(db, operation_id)
+    except ValueError as exc:
+        logger.warning("Ошибка: %s", exc)
+        return RedirectResponse(url=f"/?error={exc}", status_code=303)
+    return RedirectResponse(url="/", status_code=303)
+
+
+@router.post(
+    "/{operation_id}/deliver",
+    summary="Подтвердить доставку FBS",
+    description="Закрывает заказ: списывает физический остаток.",
+    responses={303: {"description": "Доставка подтверждена, редирект на главную"}},
+)
+async def fbs_deliver(
+    operation_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    try:
+        await deliver_fbs(db, operation_id)
     except ValueError as exc:
         logger.warning("Ошибка: %s", exc)
         return RedirectResponse(url=f"/?error={exc}", status_code=303)

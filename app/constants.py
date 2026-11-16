@@ -16,6 +16,7 @@ class OperationType(str, Enum):
     FBS_RESERVE = "FBS_RESERVE"
     FBS_SHIP = "FBS_SHIP"
     FBS_CANCEL = "FBS_CANCEL"
+    FBS_DELIVERED = "FBS_DELIVERED"
     TRANSFER = "TRANSFER"
     TRANSFER_RECEIVE = "TRANSFER_RECEIVE"
     FBO_SHIP = "FBO_SHIP"
@@ -43,6 +44,7 @@ TYPE_LABELS = {
     "FBS_RESERVE": "Резерв FBS",
     "FBS_SHIP": "Отправка FBS",
     "FBS_CANCEL": "Отмена FBS",
+    "FBS_DELIVERED": "Доставка FBS",
     "TRANSFER": "Перемещение",
     "TRANSFER_RECEIVE": "Приёмка перемещения",
     "FBO_SHIP": "Отправка FBO",

@@ -197,26 +197,33 @@ async def ship_fbs(
 
     if stock_item.qty_reserved_fbs < operation.qty:
         raise ValueError("Резерв меньше, чем нужно списать")
-    if stock_item.qty_physical < operation.qty:
-        raise ValueError("Физического остатка не хватает")
 
     stock_item.qty_reserved_fbs -= operation.qty
-    stock_item.qty_physical -= operation.qty
-    operation.status = "CONFIRMED"
+    operation.status = "IN_TRANSIT"
 
     db.add(
         StockLedger(
             operation_id=operation.id,
             product_id=operation.product_id,
             warehouse_id=operation.warehouse_id,
-            delta_physical=-operation.qty,
             delta_reserved=-operation.qty,
+        )
+    )
+    db.add(
+        InTransit(
+            operation_id=operation.id,
+            product_id=operation.product_id,
+            qty=operation.qty,
+            kind=InTransitKind.FBS_TO_CLIENT.value,
+            from_warehouse_id=operation.warehouse_id,
+            to_warehouse_id=None,
+            status="IN_TRANSIT",
         )
     )
     await db.commit()
     await db.refresh(operation)
     logger.info(
-        "Отправка FBS: операция id=%s", operation_id,
+        "Отправка FBS: операция id=%s, в пути к клиенту", operation_id,
     )
     return operation
 
@@ -800,3 +807,55 @@ async def restore_product(
     await db.commit()
     await db.refresh(product)
     return product
+
+
+async def deliver_fbs(
+    db: AsyncSession,
+    operation_id: int,
+) -> Operation:
+    """Подтвердить доставку FBS: списать физический остаток."""
+    operation = await db.get(Operation, operation_id)
+    if operation is None or operation.type != OperationType.FBS_RESERVE.value:
+        raise ValueError("Операция не найдена или не является FBS-отправкой")
+    if operation.status != "IN_TRANSIT":
+        raise ValueError("Заказ уже доставлен или отменён")
+
+    in_transit = (
+        await db.execute(
+            select(InTransit).where(
+                InTransit.operation_id == operation_id,
+                InTransit.kind == InTransitKind.FBS_TO_CLIENT.value,
+                InTransit.status == "IN_TRANSIT",
+            )
+        )
+    ).scalar_one_or_none()
+    if in_transit is None:
+        raise ValueError("Запись о товаре в пути не найдена")
+
+    stock_item = (
+        await db.execute(
+            select(StockItem).where(
+                StockItem.product_id == operation.product_id,
+                StockItem.warehouse_id == operation.warehouse_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if stock_item is None or stock_item.qty_physical < operation.qty:
+        raise ValueError("Физического остатка не хватает")
+
+    stock_item.qty_physical -= operation.qty
+    in_transit.status = "RECEIVED"
+    operation.status = "CONFIRMED"
+
+    db.add(
+        StockLedger(
+            operation_id=operation.id,
+            product_id=operation.product_id,
+            warehouse_id=operation.warehouse_id,
+            delta_physical=-operation.qty,
+        )
+    )
+    await db.commit()
+    await db.refresh(operation)
+    logger.info("Доставка FBS: операция id=%s", operation_id)
+    return operation
