@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>CheckStock — приёмка перемещения</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; }
+    label { display: block; margin: 12px 0 4px; }
+    input { padding: 4px 8px; width: 260px; }
+    button { margin-top: 16px; padding: 6px 14px; }
+    .error { color: #b00020; }
+    .hint { color: #666; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>Приёмка перемещения</h1>
+  <p><a href="/">← Назад к остаткам</a></p>
+
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+
+  <p>
+    Товар: <b>{{ operation.product.sku }} — {{ operation.product.name }}</b><br>
+    Отправлено: <b>{{ operation.qty }}</b> шт.<br>
+    Откуда: <b>{{ operation.from_warehouse.name }}</b><br>
+    Куда: <b>{{ operation.to_warehouse.name }}</b>
+  </p>
+
+  <form method="post" action="/transfers/{{ operation.id }}/receive">
+    <label for="fact_qty">Фактически принято, шт.</label>
+    <input type="number" name="fact_qty" id="fact_qty"
+           value="{{ operation.qty }}" min="0" required>
+    <p class="hint">
+      Если фактическое количество отличается от отправленного,
+      будет создан акт расхождения.
+    </p>
+
+    <label for="comment">Комментарий (необязательно)</label>
+    <input type="text" name="comment" id="comment" maxlength="500">
+
+    <button type="submit">Подтвердить приёмку</button>
+  </form>
+</body>
+</html>

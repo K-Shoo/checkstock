@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+checkstock.db
+.env
+.mypy_cache/

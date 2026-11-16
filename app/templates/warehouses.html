@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>CheckStock — склады</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; }
+    table { border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+    .error { color: #b00020; margin: 12px 0; }
+    .inactive { color: #999; }
+    form.inline { display: inline; }
+    input[type="text"] { padding: 4px 8px; width: 220px; }
+    button { padding: 4px 10px; }
+  </style>
+</head>
+<body>
+  <h1>Склады ФФ</h1>
+  <p><a href="/">← Назад к остаткам</a></p>
+
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+
+  <h2>Добавить склад</h2>
+  <form method="post" action="/warehouses/create">
+    <input type="text" name="name" placeholder="Название" required>
+    <button type="submit">Добавить</button>
+  </form>
+
+  <h2>Список складов</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Статус</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for wh in warehouses %}
+        <tr class="{{ 'inactive' if not wh.is_active else '' }}">
+          <td>{{ wh.name }}</td>
+          <td>{{ "Активен" if wh.is_active else "Удалён" }}</td>
+          <td>
+            {% if wh.is_active %}
+              <form class="inline" method="post" action="/warehouses/{{ wh.id }}/rename">
+                <input type="text" name="name" value="{{ wh.name }}" required>
+                <button type="submit">Переименовать</button>
+              </form>
+              <form class="inline" method="post" action="/warehouses/{{ wh.id }}/delete">
+                <button type="submit">Удалить</button>
+              </form>
+            {% else %}
+              <form class="inline" method="post" action="/warehouses/{{ wh.id }}/restore">
+                <button type="submit">Восстановить</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

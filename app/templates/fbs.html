@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>CheckStock — резерв FBS</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; }
+    label { display: block; margin: 12px 0 4px; }
+    select, input { padding: 4px 8px; width: 260px; }
+    button { margin-top: 16px; padding: 6px 14px; }
+  </style>
+</head>
+<body>
+  <h1>Резерв FBS</h1>
+  {% if error %}
+    <p style="color:#b00020;">{{ error }}</p>
+  {% endif %}
+  <form method="post" action="/fbs/reserve">
+    <label for="product_id">Товар</label>
+    <select name="product_id" id="product_id" required>
+      {% for p in products %}
+        <option value="{{ p.id }}">{{ p.sku }} — {{ p.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="warehouse_id">Склад</label>
+    <select name="warehouse_id" id="warehouse_id" required>
+      {% for wh in warehouses %}
+        <option value="{{ wh.id }}">{{ wh.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="qty">Количество</label>
+    <input type="number" name="qty" id="qty" min="1" value="1" required>
+
+    <button type="submit">Зарезервировать</button>
+  </form>
+  <p><a href="/">← Назад к остаткам</a></p>
+</body>
+</html>
