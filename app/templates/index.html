@@ -50,6 +50,34 @@
   </tbody>
 </table>
 
+<h2>Резервы FBS в ожидании</h2>
+{% if pending_fbs %}
+  <table>
+    <thead>
+      <tr><th>Товар</th><th>Склад</th><th>Кол-во</th><th>Действия</th></tr>
+    </thead>
+    <tbody>
+      {% for op in pending_fbs %}
+        <tr>
+          <td>{{ op.product.sku }}</td>
+          <td>{{ op.warehouse.name }}</td>
+          <td>{{ op.qty }}</td>
+          <td>
+            <form class="inline" method="post" action="/fbs/{{ op.id }}/ship">
+              <button>Отправить</button>
+            </form>
+            <form class="inline" method="post" action="/fbs/{{ op.id }}/cancel">
+              <button>Отменить</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="muted">Резервов в ожидании нет.</p>
+{% endif %}
+
 <h2>В пути между ФФ</h2>
 {% set between = in_transit | selectattr("kind", "equalto", "BETWEEN_FF") | list %}
 {% if between %}
@@ -197,14 +225,6 @@
           <td>{{ op.qty }}</td>
           <td>{{ status_badge(op.status) }}</td>
           <td>
-            {% if op.type == "FBS_RESERVE" and op.status == "PENDING" %}
-              <form class="inline" method="post" action="/fbs/{{ op.id }}/ship">
-                <button>Отправить</button>
-              </form>
-              <form class="inline" method="post" action="/fbs/{{ op.id }}/cancel">
-                <button>Отменить</button>
-              </form>
-            {% endif %}
           </td>
         </tr>
       {% endfor %}

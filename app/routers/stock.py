@@ -80,6 +80,20 @@ async def index(
             .order_by(MarketplaceStock.product_id)
         )
     ).scalars().all()
+    pending_fbs = (
+        await db.execute(
+            select(Operation)
+            .options(
+                selectinload(Operation.product),
+                selectinload(Operation.warehouse),
+            )
+            .where(
+                Operation.type == "FBS_RESERVE",
+                Operation.status == "PENDING",
+            )
+            .order_by(Operation.created_at)
+        )
+    ).scalars().all()
     discrepancies = (
         await db.execute(
             select(Discrepancy)
@@ -114,6 +128,7 @@ async def index(
             "operations": operations,
             "in_transit": in_transit,
             "marketplace_stock": marketplace_stock,
+            "pending_fbs": pending_fbs,
             "discrepancies": discrepancies,
             "error": error,
         },
